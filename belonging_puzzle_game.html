@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Crossing to Graduation – The Student Journey.</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; }
+    canvas { display: block; margin: 0 auto; }
+    .hint { max-width: 780px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+<h2>Crossing to Graduation – The Student Journey. </h2>
+<h3>Help LCC Students Reach Graduation Island</h3>
+<p class="hint">
+  Boat rule: <b>Student may cross alone or with one passenger</b> (capacity 1 + S).<br>
+  Conflicts trigger only on the shore <b>without the Student</b>.<br>
+  Forbidden pairs there: <b>Identity + Major</b> and <b>Major + Club</b>.
+</p>
+
+<script>
+  // Roles
+  const roles = [
+    { id: 'S', name: 'Student',            color: '#8BC34A' },
+    { id: 'I', name: 'Identity',           color: '#BA68C8' },
+    { id: 'C', name: 'Club',               color: '#FFA726' },
+    { id: 'L', name: 'Learning Commons',   color: '#4FC3F7' },
+    { id: 'M', name: 'Major',              color: '#E57373' }
+  ];
+
+  let leftShore  = [...roles]; // start: everyone on the left
+  let rightShore = [];
+  let boat       = [];         // items currently in the boat (S may ride alone or with 1 other)
+  let boatSide   = 'left';     // 'left' or 'right'
+  let moveBtn, resetBtn;
+
+  function setup() {
+    createCanvas(820, 440);
+
+    moveBtn = createButton('Move Boat');
+    moveBtn.position(width/2 - 110, height - 35);
+    moveBtn.mousePressed(moveBoat);
+
+    resetBtn = createButton('Reset');
+    resetBtn.position(width/2 + 20, height - 35);
+    resetBtn.mousePressed(resetGame);
+    textFont('Arial');
+  }
+
+  function draw() {
+    background(245);
+
+    // River
+    noStroke();
+    fill(188, 222, 255);
+    rect(0, height/2 - 70, width, 140);
+
+    // Labels
+    fill(60);
+    textSize(16);
+    textAlign(LEFT, CENTER);
+    text('Left Shore', 40, 26);
+    textAlign(RIGHT, CENTER);
+    text('Right Shore', width - 40, 26);
+
+    // Shores
+    drawGroup(leftShore, 40, 50);
+    drawGroup(rightShore, width - 160, 50);
+
+    // Boat
+    drawBoat();
+
+    // Instructions
+    fill(50);
+    textAlign(CENTER, CENTER);
+    textSize(13);
+    text('Click a card on either shore to place it in the boat (max: Student alone or Student + 1). Click the boat to unload.', width/2, height/2 + 90);
+
+    // Win check
+    if (rightShore.length === roles.length) {
+      push();
+      textSize(18);
+      fill('#2e7d32');
+      text('🎉 All across! You Help Another Student Reach Graduation Island!', width/2, 20);
+      pop();
+    }
+  }
+
+  function drawGroup(group, x, y) {
+    textAlign(LEFT, CENTER);
+    for (let i = 0; i < group.length; i++) {
+      const r = group[i];
+      fill(r.color);
+      stroke(80);
+      rect(x, y + i*32, 140, 26, 6);
+      noStroke();
+      fill(0);
+      text(r.name, x + 8, y + i*32 + 13);
+    }
+  }
+
+  function drawBoat() {
+    // hull
+    fill(100);
+    stroke(60);
+    rect(width/2 - 80, height/2 - 35, 160, 70, 8);
+    noStroke();
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(14);
+    text('BOAT', width/2, height/2);
+
+    // riders in boat
+    drawGroup(boat, width/2 - 60, height/2 - 24);
+  }
+
+  function mousePressed() {
+    // Try picking from left/right shores into the boat
+    const y0 = 50;
+
+    // Boat bounds
+    const inBoat =
+            mouseX > width/2 - 80 && mouseX < width/2 + 80 &&
+            mouseY > height/2 - 35 && mouseY < height/2 + 35;
+
+    if (inBoat) {
+      // Unload boat to current shore
+      if (boatSide === 'left') leftShore.push(...boat);
+      else rightShore.push(...boat);
+      boat = [];
+      return;
+    }
+
+    // Pick from left shore
+    if (mouseX >= 40 && mouseX <= 180) {
+      for (let i = 0; i < leftShore.length; i++) {
+        if (mouseY > y0 + i*32 && mouseY < y0 + i*32 + 26) {
+          tryLoadToBoat(leftShore, i);
+          return;
+        }
+      }
+    }
+
+    // Pick from right shore
+    if (mouseX >= width - 160 && mouseX <= width - 20) {
+      for (let i = 0; i < rightShore.length; i++) {
+        if (mouseY > y0 + i*32 && mouseY < y0 + i*32 + 26) {
+          tryLoadToBoat(rightShore, i);
+          return;
+        }
+      }
+    }
+  }
+
+  function tryLoadToBoat(sourceShore, idx) {
+    const card = sourceShore[idx];
+
+    // Capacity: Student alone OR Student + 1 passenger
+    // Implement as: boat can have 1 card (S alone) OR 2 cards that must include S.
+    if (boat.length === 0) {
+      // first card can be anyone
+      sourceShore.splice(idx, 1);
+      boat.push(card);
+    } else if (boat.length === 1) {
+      // add only if one of the two is Student
+      const alreadyHasS = boat.some(r => r.id === 'S');
+      const addingS = (card.id === 'S');
+      if (alreadyHasS || addingS) {
+        sourceShore.splice(idx, 1);
+        boat.push(card);
+      } else {
+        alert('Boat rule: Only Student + one other may ride together.');
+      }
+    } else {
+      alert('Boat is full.');
+    }
+  }
+
+  function moveBoat() {
+    // Must include Student in the boat to move
+    if (!boat.some(r => r.id === 'S')) {
+      alert('The Student must be in the boat to move.');
+      return;
+    }
+    // Capacity already enforced (S alone or S + 1)
+
+    // Cross
+    boatSide = (boatSide === 'left') ? 'right' : 'left';
+    if (boatSide === 'left') leftShore.push(...boat);
+    else rightShore.push(...boat);
+    boat = [];
+
+    // Check conflicts on shore WITHOUT the Student
+    const conflictMsg = checkConflicts();
+    if (conflictMsg) alert('⚠️ Conflict!\n' + conflictMsg);
+  }
+
+  function checkConflicts() {
+    // Determine where the Student is
+    const S_on_left  = leftShore.some(r => r.id === 'S');
+    const S_on_right = rightShore.some(r => r.id === 'S');
+
+    // Conflict only on the shore without the Student
+    const testShore = S_on_left ? rightShore : leftShore;
+    const ids = new Set(testShore.map(r => r.id));
+
+    // Forbidden pairs (Hard Mode)
+    if (ids.has('I') && ids.has('M')) return 'Identity + Major left without the Student → Identity overwhelmed.';
+    if (ids.has('M') && ids.has('C')) return 'Major + Club left without the Student → Distraction from academics.';
+    return null;
+  }
+
+  function resetGame() {
+    leftShore  = [...roles];
+    rightShore = [];
+    boat       = [];
+    boatSide   = 'left';
+  }
+</script>
+</body>
+</html>
